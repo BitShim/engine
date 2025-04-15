@@ -1,13 +1,13 @@
-import { createLoop } from '@/engine';
+import { LoopConfig } from '@/types';
 
 /**
- * Simulation loop responsible for updating game logic,
- * such as AI, pathfinding, and world state.
+ * Simulation loop responsible for core game logic,
+ * such as AI, state updates, and world progression.
  */
-export const simulationLoop = createLoop({
+export const simulationLoop: LoopConfig = {
   name: 'simulation',
-  interval: 16, // Approximately 60 updates per second
+  interval: 16, // ~60 updates per second
   callback: () => {
-    // TODO: Implement simulation update logic
+    // TODO: Implement simulation logic
   },
-});
+};

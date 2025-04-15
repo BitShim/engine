@@ -1,60 +1,33 @@
+import { createLoopManager } from '@/engine';
+import { physicsLoop, renderingLoop, simulationLoop } from './loops';
+
 /**
- * Das engine yas
+ * Creates and initializes the core game engine.
+ * Registers all default loops and starts ticking.
  */
 export function createEngine() {
-  let running = false;
-  let fps = 60;
-  let frameDuration = 1000 / fps;
-  let lastTime = 0;
-  let updateCallback: (({ delta }: { delta: number }) => void) | null = null;
+  const worker = new Worker(new URL('@/workers/worker.ts', import.meta.url), {
+    type: 'module',
+  });
 
-  let frameId: number | null = null;
+  const loopManager = createLoopManager();
 
-  function loop() {
-    if (!running) return;
+  // Register default loops
+  loopManager.registerLoop(simulationLoop);
+  loopManager.registerLoop(physicsLoop);
+  loopManager.registerLoop(renderingLoop);
 
-    const now = performance.now();
-    const delta = now - lastTime;
-
-    if (delta >= frameDuration) {
-      lastTime = now;
-      if (updateCallback) updateCallback({ delta });
+  // Listen to ticks from worker
+  worker.onmessage = (event) => {
+    if (event.data.type === 'tick') {
+      loopManager.startAll(); // Or call tickAll() if we separate ticking
     }
-
-    frameId = requestAnimationFrame(loop);
-  }
+  };
 
   return {
-    start() {
-      if (running) return;
-      running = true;
-      lastTime = performance.now();
-      loop();
-    },
-
-    stop() {
-      running = false;
-      if (frameId !== null) {
-        cancelAnimationFrame(frameId);
-        frameId = null;
-      }
-    },
-
-    setFps({ fps }: { fps?: number }) {
-      fps ??= 60;
-      frameDuration = 1000 / fps;
-    },
-
-    onUpdate({
-      callback,
-    }: {
-      callback: ({ delta }: { delta: number }) => void;
-    }) {
-      updateCallback = callback;
-    },
-
-    isRunning() {
-      return running;
-    },
+    start: () => worker.postMessage({ type: 'setHz', payload: { hz: 60 } }),
+    stop: () => worker.terminate(),
+    worker,
+    loopManager,
   };
 }

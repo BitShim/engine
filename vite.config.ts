@@ -1,9 +1,13 @@
 import { defineConfig } from 'vitest/config';
 import dts from 'vite-plugin-dts';
-import tsconfigPaths from 'vite-tsconfig-paths';
 import path from 'path';
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, 'src'),
+    },
+  },
   build: {
     lib: {
       entry: path.resolve(__dirname, 'src/index.ts'),
@@ -15,7 +19,7 @@ export default defineConfig({
       external: [],
     },
   },
-  plugins: [dts(), tsconfigPaths()],
+  plugins: [dts()],
   test: {
     environment: 'jsdom',
     setupFiles: './tests/setup.ts',

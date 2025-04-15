@@ -1,55 +1,89 @@
+import { LoopConfig } from '@/types';
+import { createLoop } from './loopFactory';
+
 /**
- * Loop Manager to coordinate the execution of simulation, physics, and rendering loops.
+ * Creates a manager for handling multiple loops.
+ * Allows registering, ticking, starting, stopping, and querying loops.
  */
+export function createLoopManager() {
+  const loops = new Map<string, ReturnType<typeof createLoop>>();
 
-import { simulationLoop } from '@/loops/simulation';
-import { physicsLoop } from '@/loops/physics';
-import { renderingLoop } from '@/loops/rendering';
+  function registerLoop({
+    name,
+    interval,
+    callback,
+    reduceWhenUnfocused,
+    pauseWhenHidden,
+    unfocusedInterval,
+  }: LoopConfig) {
+    if (loops.has(name)) {
+      console.warn(`Loop with name "${name}" is already registered.`);
+      return;
+    }
 
-type LoopType = 'simulation' | 'physics' | 'rendering';
+    const loopInstance = createLoop({
+      name,
+      interval,
+      callback,
+      reduceWhenUnfocused,
+      pauseWhenHidden,
+      unfocusedInterval,
+    });
 
-interface LoopConfig {
-  type: LoopType;
-  interval: number;
-  lastExecuted: number;
-  loop: {
-    start: () => void;
-    stop: () => void;
-    isRunning: () => boolean;
+    loops.set(name, loopInstance);
+  }
+
+  function startLoop({ name }: { name: string }) {
+    const loop = loops.get(name);
+    if (loop) {
+      loop.start();
+    } else {
+      console.warn(`Loop "${name}" not found.`);
+    }
+  }
+
+  function stopLoop({ name }: { name: string }) {
+    const loop = loops.get(name);
+    if (loop) {
+      loop.stop();
+    } else {
+      console.warn(`Loop "${name}" not found.`);
+    }
+  }
+
+  function isRunning({ name }: { name: string }): boolean {
+    const loop = loops.get(name);
+    return loop ? loop.isRunning() : false;
+  }
+
+  function startAll() {
+    loops.forEach((loop) => loop.start());
+  }
+
+  function stopAll() {
+    loops.forEach((loop) => loop.stop());
+  }
+
+  // Placeholder for tickAll if you want to process per-tick logic
+  function tickAll() {
+    // Optional: add hooks or profiling here later
+    loops.forEach((loop) => {
+      if (!loop.isRunning()) loop.start();
+    });
+  }
+
+  function getLoop({ name }: { name: string }) {
+    return loops.get(name);
+  }
+
+  return {
+    registerLoop,
+    startLoop,
+    stopLoop,
+    isRunning,
+    startAll,
+    stopAll,
+    tickAll,
+    getLoop,
   };
-}
-
-const loops: LoopConfig[] = [
-  {
-    type: 'simulation',
-    interval: 16, // 60 times per second
-    lastExecuted: 0,
-    loop: simulationLoop,
-  },
-  {
-    type: 'physics',
-    interval: 20, // 50 times per second
-    lastExecuted: 0,
-    loop: physicsLoop,
-  },
-  {
-    type: 'rendering',
-    interval: 16, // 60 times per second
-    lastExecuted: 0,
-    loop: renderingLoop,
-  },
-];
-
-/**
- * Initializes the loop manager by starting all loops.
- */
-export function startLoops() {
-  loops.forEach(({ loop }) => loop.start());
-}
-
-/**
- * Stops all loops.
- */
-export function stopLoops() {
-  loops.forEach(({ loop }) => loop.stop());
 }

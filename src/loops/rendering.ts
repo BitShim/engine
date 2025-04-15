@@ -1,13 +1,17 @@
-import { createLoop } from '@/engine/loopFactory';
+import { LoopConfig } from '@/types';
 
 /**
- * Rendering loop responsible for updating the visual representation
- * of the game. Adjusts its frequency based on window focus and visibility.
+ * Rendering loop responsible for visual updates and redraws.
+ * It runs at full rate when in focus, slows down when unfocused,
+ * and stops completely when the tab is hidden.
  */
-export const renderingLoop = createLoop({
+export const renderingLoop: LoopConfig = {
   name: 'rendering',
-  interval: 16, // Approximately 60 frames per second
+  interval: 16, // 60 FPS
   callback: () => {
     // TODO: Implement rendering logic
   },
-});
+  reduceWhenUnfocused: true,
+  pauseWhenHidden: true,
+  unfocusedInterval: 1000 / 30, // 30 FPS
+};
