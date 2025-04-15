@@ -15,11 +15,11 @@ export default defineConfig({
       fileName: 'bitshim-engine',
       formats: ['es'],
     },
-    rollupOptions: {
-      external: [],
-    },
   },
-  plugins: [dts()],
+
+  plugins: [
+    // dts({ entryRoot: 'src', rollupTypes: true, tsconfigPath: 'tsconfig.json' }),
+  ],
   test: {
     environment: 'jsdom',
     setupFiles: './tests/setup.ts',

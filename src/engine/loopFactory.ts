@@ -1,3 +1,5 @@
+import { LoopConfig } from './loopConfig';
+
 /**
  * Factory function to create a loop with the specified configuration.
  */
@@ -8,20 +10,7 @@ export function createLoop({
   reduceWhenUnfocused,
   pauseWhenHidden,
   unfocusedInterval = 1000 / 30, // default: 30fps
-}: {
-  /** Optional identifier for the loop. */
-  name?: string;
-  /** Time interval in milliseconds between each callback execution. */
-  interval: number;
-  /** Function to be called at each interval. */
-  callback: () => void;
-  /** Whether to reduce the interval when window loses focus. */
-  reduceWhenUnfocused?: boolean;
-  /** Whether to pause the loop when the tab becomes hidden. */
-  pauseWhenHidden?: boolean;
-  /** Interval to use when unfocused (only if reduceWhenUnfocused is true). */
-  unfocusedInterval?: number;
-}) {
+}: LoopConfig) {
   let timerId: ReturnType<typeof setInterval> | null = null;
   let running = false;
   let currentInterval = interval;

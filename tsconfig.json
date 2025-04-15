@@ -14,12 +14,7 @@
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "noPropertyAccessFromIndexSignature": false,
-    "declaration": true,
-    "emitDeclarationOnly": true,
-    "outDir": "dist",
-    "declarationDir": "dist/types"
+    "noPropertyAccessFromIndexSignature": false
   },
-  "include": ["src", "tests"],
-  "exclude": ["tests"]
+  "include": ["src"]
 }

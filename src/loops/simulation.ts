@@ -1,4 +1,4 @@
-import { LoopConfig } from '@/types';
+import { LoopConfig } from '@/engine';
 
 /**
  * Simulation loop responsible for core game logic,

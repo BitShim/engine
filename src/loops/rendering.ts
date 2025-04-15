@@ -1,4 +1,4 @@
-import { LoopConfig } from '@/types';
+import { LoopConfig } from '@/engine';
 
 /**
  * Rendering loop responsible for visual updates and redraws.
