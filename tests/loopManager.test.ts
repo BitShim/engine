@@ -1,5 +1,5 @@
 import { createLoopManager } from '@/engine';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 describe('Loop Manager', () => {
   it('should register and manage loops correctly', () => {
@@ -7,7 +7,7 @@ describe('Loop Manager', () => {
     const loopConfig = {
       name: 'testLoop',
       interval: 100,
-      callback: jest.fn(),
+      callback: vi.fn(),
     };
 
     manager.registerLoop(loopConfig);
