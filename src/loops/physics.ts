@@ -1,4 +1,4 @@
-import { LoopConfig } from '@/engine';
+import { LoopConfig } from '@/core';
 
 /**
  * Physics loop responsible for deterministic and fixed-rate

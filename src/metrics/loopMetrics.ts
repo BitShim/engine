@@ -1,5 +1,3 @@
-// loopMetrics.ts
-
 /**
  * Interface representing the metrics collected for a loop.
  */
@@ -32,21 +30,25 @@ export function createLoopMetrics(maxSamples: number = 100) {
    * @param timestamp - The current timestamp in milliseconds.
    */
   function recordFrame(timestamp: number) {
+    frameCount++; // Always increment on record
+
     if (lastTimestamp) {
       const delta = timestamp - lastTimestamp;
+
+      const avgBefore = getAverageFrameTime(); // Compute BEFORE adding new delta
+
       frameTimes.push(delta);
       totalTime += delta;
-      frameCount++;
 
       if (frameTimes.length > maxSamples) {
         frameTimes.shift();
       }
 
-      const avg = getAverageFrameTime();
-      if (delta > 2 * avg) {
+      if (avgBefore > 0 && delta > 2 * avgBefore) {
         droppedFrames++;
       }
     }
+
     lastTimestamp = timestamp;
   }
 

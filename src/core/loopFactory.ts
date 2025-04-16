@@ -1,4 +1,4 @@
-import { LoopConfig } from './loopConfig';
+import { LoopConfig } from '@/core';
 
 /**
  * Factory function to create a loop with the specified configuration.

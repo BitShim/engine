@@ -25,5 +25,9 @@ export default defineConfig({
     setupFiles: './tests/setup.ts',
     globals: true,
     include: ['tests/**/*.test.ts'],
+    coverage: {
+      reporter: ['text', 'lcov'], // 👈 this line enables the HTML output
+      exclude: ['dist', '**/*[cC]onfig.ts', '**/index.ts'],
+    },
   },
 });

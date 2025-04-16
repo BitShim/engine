@@ -1,4 +1,4 @@
-import { createLoopManager } from '@/engine';
+import { createLoopManager } from '@/core';
 import { describe, expect, it, vi } from 'vitest';
 
 describe('Loop Manager', () => {

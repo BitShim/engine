@@ -1,4 +1,4 @@
-import { LoopConfig } from './loopConfig';
+import { LoopConfig } from '@/types';
 import { createLoop } from './loopFactory';
 
 /**
