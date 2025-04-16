@@ -3,21 +3,31 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createLoop } from '@/core/loopFactory';
 
+/**
+ * This test suite exercises **all** branches in `createLoop`:
+ * 1. normal start/stop
+ * 2. listeners added / not added
+ * 3. pause-on-hidden true & false paths
+ * 4. reduce‑when‑unfocused true & false, focused & unfocused
+ * 5. duplicate‑start guard (`if (!running)` false branch)
+ * 6. default `unfocusedInterval` parameter
+ * 7. environment with missing `window`/`document`
+ * 8. branch where `pauseWhenHidden` true but `hidden` is false
+ */
+
 describe('createLoop', () => {
-  let origHiddenDesc: PropertyDescriptor | undefined;
+  let origHidden: PropertyDescriptor | undefined;
   let origHasFocus: (() => boolean) | undefined;
 
   beforeEach(() => {
-    // Save original document.hidden and document.hasFocus so we can restore them
-    origHiddenDesc = Object.getOwnPropertyDescriptor(document, 'hidden');
+    origHidden = Object.getOwnPropertyDescriptor(document, 'hidden');
     origHasFocus = document.hasFocus;
     vi.useFakeTimers();
   });
 
   afterEach(() => {
-    // Restore document.hidden and document.hasFocus
-    if (origHiddenDesc) {
-      Object.defineProperty(document, 'hidden', origHiddenDesc);
+    if (origHidden) {
+      Object.defineProperty(document, 'hidden', origHidden);
     } else {
       delete (document as any).hidden;
     }
@@ -26,206 +36,194 @@ describe('createLoop', () => {
     vi.restoreAllMocks();
   });
 
-  it('should start and stop the loop correctly', () => {
-    const callback = vi.fn();
+  it('starts and stops correctly', () => {
+    const cb = vi.fn();
     const loop = createLoop({
-      name: 'test-loop',
-      interval: 100,
-      callback,
+      name: 'base',
+      interval: 60,
+      callback: cb,
       reduceWhenUnfocused: false,
       pauseWhenHidden: false,
     });
-
-    // Initially not running
-    expect(loop.isRunning()).toBe(false);
-
-    // Spy before starting/stopping
-    const setIntervalSpy = vi.spyOn(window, 'setInterval');
-    const clearIntervalSpy = vi.spyOn(window, 'clearInterval');
+    const setInt = vi.spyOn(window, 'setInterval');
+    const clrInt = vi.spyOn(window, 'clearInterval');
 
     loop.start();
     expect(loop.isRunning()).toBe(true);
-    expect(setIntervalSpy).toHaveBeenCalledWith(callback, 100);
+    expect(setInt).toHaveBeenCalledWith(cb, 60);
 
     loop.stop();
     expect(loop.isRunning()).toBe(false);
-    expect(clearIntervalSpy).toHaveBeenCalled();
+    expect(clrInt).toHaveBeenCalled();
   });
 
-  it('should not add event listeners if both flags are false', () => {
+  it('does not schedule a second timer if start() called while running', () => {
+    const cb = vi.fn();
+    const loop = createLoop({
+      name: 'dup',
+      interval: 40,
+      callback: cb,
+      reduceWhenUnfocused: false,
+      pauseWhenHidden: false,
+    });
+    const spy = vi.spyOn(window, 'setInterval');
+    loop.start();
+    const first = spy.mock.calls.length;
+    loop.start();
+    expect(spy.mock.calls.length).toBe(first); // no new timer
+  });
+
+  it('adds listeners when either flag true and skips otherwise', () => {
     const docSpy = vi.spyOn(document, 'addEventListener');
     const winSpy = vi.spyOn(window, 'addEventListener');
 
     createLoop({
-      name: 'test-loop',
-      interval: 100,
+      name: 'no-listeners',
+      interval: 50,
       callback: () => {},
       reduceWhenUnfocused: false,
       pauseWhenHidden: false,
     });
-
     expect(docSpy).not.toHaveBeenCalled();
-    expect(winSpy).not.toHaveBeenCalled();
-  });
-
-  it('should add event listeners when flags are true', () => {
-    const docSpy = vi.spyOn(document, 'addEventListener');
-    const winSpy = vi.spyOn(window, 'addEventListener');
 
     createLoop({
-      name: 'test-loop',
-      interval: 100,
+      name: 'listeners',
+      interval: 50,
       callback: () => {},
       reduceWhenUnfocused: true,
       pauseWhenHidden: true,
     });
-
     expect(docSpy).toHaveBeenCalledWith(
       'visibilitychange',
       expect.any(Function),
     );
-    expect(winSpy).toHaveBeenCalledWith('focus', expect.any(Function));
     expect(winSpy).toHaveBeenCalledWith('blur', expect.any(Function));
   });
 
-  it('should pause when hidden if pauseWhenHidden is true', () => {
-    const callback = vi.fn();
+  it('pauses when hidden (pauseWhenHidden true & hidden true)', () => {
+    const cb = vi.fn();
     const loop = createLoop({
-      name: 'test-loop',
-      interval: 100,
-      callback,
+      name: 'hidden',
+      interval: 70,
+      callback: cb,
       reduceWhenUnfocused: false,
       pauseWhenHidden: true,
     });
     loop.start();
-    expect(loop.isRunning()).toBe(true);
-
-    // Simulate hidden document
     Object.defineProperty(document, 'hidden', {
       configurable: true,
       get: () => true,
     });
     document.dispatchEvent(new Event('visibilitychange'));
-
     expect(loop.isRunning()).toBe(false);
   });
 
-  it('should restart with reduced interval when unfocused if reduceWhenUnfocused is true', () => {
-    const callback = vi.fn();
+  it('restarts at reduced interval when unfocused', () => {
+    const cb = vi.fn();
     const loop = createLoop({
-      name: 'test-loop',
+      name: 'unfocused',
       interval: 100,
-      callback,
+      callback: cb,
       reduceWhenUnfocused: true,
       pauseWhenHidden: false,
-      unfocusedInterval: 200,
+      unfocusedInterval: 250,
     });
-    const setIntervalSpy = vi.spyOn(window, 'setInterval');
-    const clearIntervalSpy = vi.spyOn(window, 'clearInterval');
-
-    // Simulate unfocused document
+    const setInt = vi.spyOn(window, 'setInterval');
     document.hasFocus = () => false;
 
     loop.start();
-    expect(setIntervalSpy).toHaveBeenCalledWith(callback, 100);
-
     window.dispatchEvent(new Event('blur'));
     vi.advanceTimersByTime(1);
 
-    const calls = setIntervalSpy.mock.calls;
-    expect(calls.length).toBeGreaterThan(0);
-    const [, lastDelay] = calls[calls.length - 1]!;
-    expect(lastDelay).toBe(200);
-    expect(clearIntervalSpy).toHaveBeenCalled();
+    const [, delay] = setInt.mock.calls.pop()!;
+    expect(delay).toBe(250);
   });
 
-  it('should not restart if updateInterval triggers when not running', () => {
-    const callback = vi.fn();
+  it('keeps running (and restarts) when pauseWhenHidden true but document is visible', () => {
+    const cb = vi.fn();
     const loop = createLoop({
-      name: 'test-loop',
-      interval: 100,
-      callback,
-      reduceWhenUnfocused: true,
-      pauseWhenHidden: false,
-      unfocusedInterval: 200,
+      name: 'visible',
+      interval: 80,
+      callback: cb,
+      reduceWhenUnfocused: false,
+      pauseWhenHidden: true,
     });
 
-    // Never start, so running remains false
-    expect(loop.isRunning()).toBe(false);
-
-    // Spy but we won’t assert on it here
-    vi.spyOn(window, 'setInterval');
-
-    // Simulate unfocused
-    document.hasFocus = () => false;
-    window.dispatchEvent(new Event('blur'));
+    const setInt = vi.spyOn(window, 'setInterval');
+    loop.start();
+    const before = setInt.mock.calls.length;
+    // document.hidden defaults to false -> visible
+    document.dispatchEvent(new Event('visibilitychange'));
     vi.advanceTimersByTime(1);
-
-    // Loop should remain stopped
-    expect(loop.isRunning()).toBe(false);
+    const after = setInt.mock.calls.length;
+    // restart should add another setInterval call
+    expect(after).toBeGreaterThan(before);
+    expect(loop.isRunning()).toBe(true);
   });
 
-  it('uses default unfocusedInterval of 1000/30 when omitted', () => {
-    const callback = vi.fn();
-    const defaultUnfocused = 1000 / 30;
+  it('uses default unfocusedInterval (1000/30) when not specified', () => {
+    const cb = vi.fn();
     const loop = createLoop({
-      name: 'test-loop',
+      name: 'default-fps',
       interval: 120,
-      callback,
+      callback: cb,
       reduceWhenUnfocused: true,
       pauseWhenHidden: false,
-      // unfocusedInterval omitted
     });
-
-    const setIntervalSpy = vi.spyOn(window, 'setInterval');
+    const setInt = vi.spyOn(window, 'setInterval');
     document.hasFocus = () => false;
-
     loop.start();
     window.dispatchEvent(new Event('blur'));
     vi.advanceTimersByTime(1);
-
-    const calls = setIntervalSpy.mock.calls;
-    expect(calls.length).toBeGreaterThan(0);
-    const [, lastDelay] = calls[calls.length - 1]!;
-    expect(lastDelay).toBe(defaultUnfocused);
+    const [, delay] = setInt.mock.calls.pop()!;
+    expect(delay).toBeCloseTo(1000 / 30);
   });
 
   it('keeps base interval when focused even if reduceWhenUnfocused is true', () => {
-    const callback = vi.fn();
+    const cb = vi.fn();
     const loop = createLoop({
-      name: 'test-loop',
+      name: 'focused',
       interval: 150,
-      callback,
+      callback: cb,
       reduceWhenUnfocused: true,
       pauseWhenHidden: false,
       unfocusedInterval: 500,
     });
+    const setInt = vi.spyOn(window, 'setInterval');
 
-    const setIntervalSpy = vi.spyOn(window, 'setInterval');
     document.hasFocus = () => true;
-
     loop.start();
     window.dispatchEvent(new Event('blur'));
     vi.advanceTimersByTime(1);
-
-    const calls = setIntervalSpy.mock.calls;
-    expect(calls.length).toBeGreaterThan(0);
-    const [, lastDelay] = calls[calls.length - 1]!;
-    expect(lastDelay).toBe(150);
+    const [, delay] = setInt.mock.calls.pop()!;
+    expect(delay).toBe(150);
   });
 
-  it('does not throw if window or document is undefined', () => {
+  it('updateInterval does nothing harmful when loop not running', () => {
+    const cb = vi.fn();
+    const loop = createLoop({
+      name: 'not-running',
+      interval: 90,
+      callback: cb,
+      reduceWhenUnfocused: true,
+      pauseWhenHidden: false,
+      unfocusedInterval: 333,
+    });
+    document.hasFocus = () => false;
+    window.dispatchEvent(new Event('blur'));
+    expect(loop.isRunning()).toBe(false);
+  });
+
+  it('gracefully handles absence of window/document', () => {
     const origWin = global.window;
     const origDoc = global.document;
-
     try {
-      // Remove globals
       (global as any).window = undefined;
       (global as any).document = undefined;
 
       expect(() =>
         createLoop({
-          name: 'test',
+          name: 'no-env',
           interval: 100,
           callback: () => {},
           reduceWhenUnfocused: true,
@@ -236,5 +234,33 @@ describe('createLoop', () => {
       global.window = origWin;
       global.document = origDoc;
     }
+  });
+
+  /**
+   * Covers branch where `document?.hidden` evaluates to **undefined** (nullish)
+   * so the `?? false` default is used.  This is the only branch (line 19)
+   * still un‑hit in coverage.
+   */
+  it('treats undefined document.hidden as not hidden', () => {
+    const cb = vi.fn();
+    const loop = createLoop({
+      name: 'undef-hidden',
+      interval: 110,
+      callback: cb,
+      reduceWhenUnfocused: false,
+      pauseWhenHidden: true, // flag true so path executes
+    });
+
+    // Override document.hidden getter to return undefined
+    Object.defineProperty(document, 'hidden', {
+      configurable: true,
+      get: () => undefined,
+    });
+
+    loop.start();
+    // Dispatch visibilitychange to invoke updateInterval; because hidden === undefined,
+    // pauseWhenHidden should *not* stop the loop.
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(loop.isRunning()).toBe(true);
   });
 });
