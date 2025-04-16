@@ -22,12 +22,28 @@ export default defineConfig({
   ],
   test: {
     environment: 'jsdom',
-    setupFiles: './tests/setup.ts',
+    setupFiles: ['./tests/setup.ts', '@vitest/web-worker'],
     globals: true,
     include: ['tests/**/*.test.ts'],
+    exclude: [
+      'dist',
+      'src/workers/**',
+      'src/loops/**',
+      '**/*[cC]onfig.ts',
+      '**/*types.ts',
+      '**/index.ts',
+    ],
     coverage: {
-      reporter: ['text', 'lcov'], // 👈 this line enables the HTML output
-      exclude: ['dist', '**/*[cC]onfig.ts', '**/index.ts'],
+      provider: 'istanbul',
+      reporter: ['text', 'lcov'],
+      exclude: [
+        'dist/**',
+        'src/workers/**',
+        'src/loops/**',
+        '**/*[cC]onfig.ts',
+        '**/*types.ts',
+        '**/index.ts',
+      ],
     },
   },
 });

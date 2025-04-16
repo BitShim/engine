@@ -6,7 +6,7 @@
     },
     "target": "ESNext",
     "module": "ESNext",
-    "lib": ["DOM", "ESNext"],
+    "lib": ["DOM", "ESNext", "WebWorker"],
     "moduleResolution": "bundler",
     "strict": true,
     "skipLibCheck": true,

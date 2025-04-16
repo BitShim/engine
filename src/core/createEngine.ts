@@ -50,9 +50,9 @@ export function createEngine({
     loopManager.registerLoop(loop);
   }
 
-  worker.onmessage = (event) => {
-    if (event.data.type === 'tick') {
-      loopManager.startAll(); // Optional: expose this if needed
+  worker.onmessage = (event: MessageEvent<any>) => {
+    if (event.data && event.data.type === 'tick') {
+      loopManager.startAll();
     }
   };
 

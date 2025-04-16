@@ -1,5 +1,5 @@
-import { LoopConfig } from '@/types';
 import { createLoop } from './loopFactory';
+import { LoopConfig } from './types';
 
 /**
  * Creates a manager for handling multiple loops.

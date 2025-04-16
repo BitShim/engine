@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createLoop } from '@/core/loopFactory';
+import { createLoop } from '@/core';
 import { physicsLoop, renderingLoop, simulationLoop } from '@/loops';
 
 beforeEach(() => {

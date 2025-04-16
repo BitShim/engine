@@ -1,4 +1,4 @@
-import type { MainToWorkerMessage, WorkerToMainMessage } from './messages';
+import type { MainToWorkerMessage, WorkerToMainMessage } from './types';
 
 let hz = 60;
 let interval = 1000 / hz;
