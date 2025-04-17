@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/BitShim/engine/compare/v1.0.0...v1.0.1) (2025-04-17)
+
+
+### Bug Fixes
+
+* **types:** generate and publish TypeScript declarations ([8d63408](https://github.com/BitShim/engine/commit/8d6340886692e0dc03ebbeab27511c2090768943))
+
 # 1.0.0 (2025-04-17)
 
 
