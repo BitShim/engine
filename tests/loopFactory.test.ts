@@ -1,5 +1,3 @@
-// tests/loopFactory.test.ts
-
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createLoop } from '@/core/loopFactory';
 

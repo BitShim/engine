@@ -32,6 +32,7 @@ export default defineConfig({
       '**/*[cC]onfig.ts',
       '**/*types.ts',
       '**/index.ts',
+      'scripts',
     ],
     coverage: {
       provider: 'istanbul',
@@ -43,6 +44,7 @@ export default defineConfig({
         '**/*[cC]onfig.ts',
         '**/*types.ts',
         '**/index.ts',
+        'scripts',
       ],
     },
   },

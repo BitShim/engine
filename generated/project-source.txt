@@ -1,0 +1,1519 @@
+/**
+ * Project: @bitshim/engine
+ * Version: 0.1.0
+ * Generated At: 2025-04-17T00:12:30.463Z
+ */
+
+/**
+ * Table of Contents
+ * 1. .gitignore
+ * 2. .prettierrc
+ * 3. README.md
+ * 4. package.json
+ * 5. src\core\createEngine.ts
+ * 6. src\core\index.ts
+ * 7. src\core\loopFactory.ts
+ * 8. src\core\loopManager.ts
+ * 9. src\core\types.ts
+ * 10. src\index.ts
+ * 11. src\loops\index.ts
+ * 12. src\loops\physics.ts
+ * 13. src\loops\rendering.ts
+ * 14. src\loops\simulation.ts
+ * 15. src\metrics\index.ts
+ * 16. src\metrics\loopMetrics.ts
+ * 17. src\workers\index.ts
+ * 18. src\workers\types.ts
+ * 19. src\workers\worker.ts
+ * 20. tests\createEngine.test.ts
+ * 21. tests\loopFactory.test.ts
+ * 22. tests\loopManager.test.ts
+ * 23. tests\loopMetrics.test.ts
+ * 24. tests\setup.ts
+ * 25. tsconfig.json
+ * 26. vite.config.ts
+ */
+
+/**
+ * Excluded Directories:
+ *  - .git
+ *  - coverage
+ *  - dist
+ *  - generated
+ *  - node_modules
+ *  - scripts
+ * Excluded Files:
+ *  - bun.lock
+ */
+
+// ===== Start File: .gitignore =====
+/**
+ * Path: .gitignore
+ * Size: 388 bytes
+ * Last Modified: 2025-04-14T12:03:28.952Z
+ */
+
+# dependencies (bun install)
+node_modules
+
+# output
+out
+dist
+*.tgz
+
+# code coverage
+coverage
+*.lcov
+
+# logs
+logs
+_.log
+report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
+
+# dotenv environment variable files
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+
+# caches
+.eslintcache
+.cache
+*.tsbuildinfo
+
+# IntelliJ based IDEs
+.idea
+
+# Finder (MacOS) folder config
+.DS_Store
+
+// ===== End File: .gitignore =====
+
+// ===== Start File: .prettierrc =====
+/**
+ * Path: .prettierrc
+ * Size: 56 bytes
+ * Last Modified: 2025-04-15T15:03:27.660Z
+ */
+
+{
+  "singleQuote": true,
+  "jsxSingleQuote": true
+}
+
+// ===== End File: .prettierrc =====
+
+// ===== Start File: README.md =====
+/**
+ * Path: README.md
+ * Size: 220 bytes
+ * Last Modified: 2025-04-14T11:31:24.754Z
+ */
+
+# engine
+
+To install dependencies:
+
+```bash
+bun install
+```
+
+To run:
+
+```bash
+bun run index.ts
+```
+
+This project was created using `bun init` in bun v1.2.5. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+
+// ===== End File: README.md =====
+
+// ===== Start File: package.json =====
+/**
+ * Path: package.json
+ * Size: 831 bytes
+ * Last Modified: 2025-04-16T23:22:02.203Z
+ */
+
+{
+  "name": "@bitshim/engine",
+  "version": "0.1.0",
+  "type": "module",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/types/index.d.ts"
+    }
+  },
+  "scripts": {
+    "test": "bunx vitest",
+    "coverage": "vitest run --coverage",
+    "dev": "bunx --bun vite",
+    "build": "bunx --bun vite build",
+    "preview": "bunx --bun vite preview",
+    "generate": "bun run scripts/generateProjectSource.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@vitest/coverage-istanbul": "3.1.1",
+    "@vitest/coverage-v8": "3.1.1",
+    "@vitest/web-worker": "^3.1.1",
+    "jsdom": "^26.1.0",
+    "prettier": "3.5.3",
+    "vite": "^6.2.6",
+    "vite-plugin-dts": "^4.5.3",
+    "vitest": "^3.1.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
+
+// ===== End File: package.json =====
+
+// ===== Start File: src\core\createEngine.ts =====
+/**
+ * Path: src\core\createEngine.ts
+ * Size: 1795 bytes
+ * Last Modified: 2025-04-17T00:05:32.025Z
+ */
+
+import { LoopConfig } from './types';
+import { createLoopManager } from './loopManager';
+
+/**
+ * Creates and initializes the core game engine.
+ */
+export function createEngine({
+  loops,
+}: {
+  /**
+   * An array of loop configurations that define the loops to run in the engine.
+   * Each loop configuration must contain:
+   * - `name`: A unique identifier for the loop (e.g., 'simulation', 'physics', 'rendering').
+   * - `interval`: The time interval (in milliseconds) at which the loop will run.
+   * - `callback`: The function that will be executed each time the loop runs.
+   *
+   * This is a **required** parameter. The engine will not function without passing an array of loops.
+   * The loops provided will be registered and executed at the specified intervals.
+   *
+   * Example:
+   * ```ts
+   * const customLoop = {
+   *   name: 'customLoop',
+   *   interval: 30, // Custom interval in milliseconds
+   *   callback: () => console.log('Custom loop running'),
+   * };
+   *
+   * const engine = createEngine({
+   *   loops: [customLoop],
+   * });
+   * ```
+   */
+  loops: LoopConfig[];
+}) {
+  if (!loops || loops.length === 0) {
+    throw new Error('loops is required');
+  }
+
+  const worker = new Worker(new URL('@/workers/worker.ts', import.meta.url), {
+    type: 'module',
+  });
+
+  const loopManager = createLoopManager();
+
+  // Register the loops
+  for (const loop of loops) {
+    loopManager.registerLoop(loop);
+  }
+
+  worker.onmessage = (event: MessageEvent<any>) => {
+    if (event.data && event.data.type === 'tick') {
+      loopManager.startAll();
+    }
+  };
+
+  return {
+    start: () => worker.postMessage({ type: 'setHz', payload: { hz: 60 } }),
+    stop: () => worker.terminate(),
+    worker,
+    loopManager,
+  };
+}
+
+// ===== End File: src\core\createEngine.ts =====
+
+// ===== Start File: src\core\index.ts =====
+/**
+ * Path: src\core\index.ts
+ * Size: 123 bytes
+ * Last Modified: 2025-04-16T01:39:17.336Z
+ */
+
+export * from './createEngine';
+export * from './types';
+export * from './loopFactory';
+export * from './loopManager';
+
+// ===== End File: src\core\index.ts =====
+
+// ===== Start File: src\core\loopFactory.ts =====
+/**
+ * Path: src\core\loopFactory.ts
+ * Size: 1865 bytes
+ * Last Modified: 2025-04-16T01:39:24.630Z
+ */
+
+import { LoopConfig } from '@/core';
+
+/**
+ * Factory function to create a loop with the specified configuration.
+ */
+export function createLoop({
+  name,
+  interval,
+  callback,
+  reduceWhenUnfocused,
+  pauseWhenHidden,
+  unfocusedInterval = 1000 / 30, // default: 30fps
+}: LoopConfig) {
+  let timerId: ReturnType<typeof setInterval> | null = null;
+  let running = false;
+  let currentInterval = interval;
+
+  function updateInterval() {
+    const hidden = document?.hidden ?? false;
+    const unfocused =
+      typeof document.hasFocus === 'function' && !document.hasFocus();
+
+    // Should we stop completely?
+    if (pauseWhenHidden && hidden) {
+      stop();
+      return;
+    }
+
+    // Determine appropriate interval
+    currentInterval = interval;
+    if (reduceWhenUnfocused && unfocused) {
+      currentInterval = unfocusedInterval;
+    }
+
+    if (running) {
+      restart();
+    }
+  }
+
+  function start() {
+    if (!running) {
+      timerId = setInterval(callback, currentInterval);
+      running = true;
+    }
+  }
+
+  function stop() {
+    if (timerId !== null) {
+      clearInterval(timerId);
+      timerId = null;
+    }
+    running = false;
+  }
+
+  function restart() {
+    stop();
+    start();
+  }
+
+  // Only add listeners if needed
+  if (reduceWhenUnfocused || pauseWhenHidden) {
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', updateInterval);
+      window.addEventListener('focus', updateInterval);
+      window.addEventListener('blur', updateInterval);
+    }
+  }
+
+  return {
+    /** Starts the loop if it's not already running. */
+    start,
+    /** Stops the loop if it's currently running. */
+    stop,
+    /** Checks if the loop is currently running. */
+    isRunning: () => running,
+  };
+}
+
+// ===== End File: src\core\loopFactory.ts =====
+
+// ===== Start File: src\core\loopManager.ts =====
+/**
+ * Path: src\core\loopManager.ts
+ * Size: 1997 bytes
+ * Last Modified: 2025-04-16T02:08:46.528Z
+ */
+
+import { createLoop } from './loopFactory';
+import { LoopConfig } from './types';
+
+/**
+ * Creates a manager for handling multiple loops.
+ * Allows registering, ticking, starting, stopping, and querying loops.
+ */
+export function createLoopManager() {
+  const loops = new Map<string, ReturnType<typeof createLoop>>();
+
+  function registerLoop({
+    name,
+    interval,
+    callback,
+    reduceWhenUnfocused,
+    pauseWhenHidden,
+    unfocusedInterval,
+  }: LoopConfig) {
+    if (loops.has(name)) {
+      console.warn(`Loop with name "${name}" is already registered.`);
+      return;
+    }
+
+    const loopInstance = createLoop({
+      name,
+      interval,
+      callback,
+      reduceWhenUnfocused,
+      pauseWhenHidden,
+      unfocusedInterval,
+    });
+
+    loops.set(name, loopInstance);
+  }
+
+  function startLoop({ name }: { name: string }) {
+    const loop = loops.get(name);
+    if (loop) {
+      loop.start();
+    } else {
+      console.warn(`Loop "${name}" not found.`);
+    }
+  }
+
+  function stopLoop({ name }: { name: string }) {
+    const loop = loops.get(name);
+    if (loop) {
+      loop.stop();
+    } else {
+      console.warn(`Loop "${name}" not found.`);
+    }
+  }
+
+  function isRunning({ name }: { name: string }): boolean {
+    const loop = loops.get(name);
+    return loop ? loop.isRunning() : false;
+  }
+
+  function startAll() {
+    loops.forEach((loop) => loop.start());
+  }
+
+  function stopAll() {
+    loops.forEach((loop) => loop.stop());
+  }
+
+  // Placeholder for tickAll if you want to process per-tick logic
+  function tickAll() {
+    // Optional: add hooks or profiling here later
+    loops.forEach((loop) => {
+      if (!loop.isRunning()) loop.start();
+    });
+  }
+
+  function getLoop({ name }: { name: string }) {
+    return loops.get(name);
+  }
+
+  return {
+    registerLoop,
+    startLoop,
+    stopLoop,
+    isRunning,
+    startAll,
+    stopAll,
+    tickAll,
+    getLoop,
+  };
+}
+
+// ===== End File: src\core\loopManager.ts =====
+
+// ===== Start File: src\core\types.ts =====
+/**
+ * Path: src\core\types.ts
+ * Size: 546 bytes
+ * Last Modified: 2025-04-16T01:39:04.467Z
+ */
+
+export type LoopConfig = {
+  /** Unique identifier for the loop. */
+  name: string;
+  /** Time interval in milliseconds between each callback execution. */
+  interval: number;
+  /** Function to be called at each interval. */
+  callback: () => void;
+  /** Whether to reduce the interval when window loses focus. */
+  reduceWhenUnfocused?: boolean;
+  /** Whether to pause the loop when the tab is hidden. */
+  pauseWhenHidden?: boolean;
+  /** Alternate interval to use when unfocused (if reduced). */
+  unfocusedInterval?: number;
+};
+
+// ===== End File: src\core\types.ts =====
+
+// ===== Start File: src\index.ts =====
+/**
+ * Path: src\index.ts
+ * Size: 1218 bytes
+ * Last Modified: 2025-04-16T01:38:07.363Z
+ */
+
+/**
+██████  ██ ████████ ███████ ██   ██ ██ ███    ███ 
+██   ██ ██    ██    ██      ██   ██ ██ ████  ████ 
+██████  ██    ██    ███████ ███████ ██ ██ ████ ██ 
+██   ██ ██    ██         ██ ██   ██ ██ ██  ██  ██ 
+██████  ██    ██    ███████ ██   ██ ██ ██      ██ 
+                                                  
+
+███████ ███    ██  ██████  ██ ███    ██ ███████   
+██      ████   ██ ██       ██ ████   ██ ██        
+█████   ██ ██  ██ ██   ███ ██ ██ ██  ██ █████     
+██      ██  ██ ██ ██    ██ ██ ██  ██ ██ ██        
+███████ ██   ████  ██████  ██ ██   ████ ███████
+ */
+export * from './core';
+export * from './metrics';
+export * from './loops';
+
+// ===== End File: src\index.ts =====
+
+// ===== Start File: src\loops\index.ts =====
+/**
+ * Path: src\loops\index.ts
+ * Size: 89 bytes
+ * Last Modified: 2025-04-17T00:00:53.050Z
+ */
+
+export * from './rendering';
+export * from './simulation';
+export * from './physics';
+
+// ===== End File: src\loops\index.ts =====
+
+// ===== Start File: src\loops\physics.ts =====
+/**
+ * Path: src\loops\physics.ts
+ * Size: 364 bytes
+ * Last Modified: 2025-04-17T00:00:53.052Z
+ */
+
+import { LoopConfig } from '@/core';
+
+/**
+ * Physics loop responsible for deterministic and fixed-rate
+ * simulation, useful for collisions, forces, and movement resolution.
+ */
+export const physicsLoop: LoopConfig = {
+  name: 'physics',
+  interval: 20, // 50 updates per second
+  callback: () => {
+    // TODO: Implement physics update logic
+  },
+};
+
+// ===== End File: src\loops\physics.ts =====
+
+// ===== Start File: src\loops\rendering.ts =====
+/**
+ * Path: src\loops\rendering.ts
+ * Size: 492 bytes
+ * Last Modified: 2025-04-17T00:00:53.053Z
+ */
+
+import { LoopConfig } from '@/core';
+
+/**
+ * Rendering loop responsible for visual updates and redraws.
+ * It runs at full rate when in focus, slows down when unfocused,
+ * and stops completely when the tab is hidden.
+ */
+export const renderingLoop: LoopConfig = {
+  name: 'rendering',
+  interval: 16, // 60 FPS
+  callback: () => {
+    // TODO: Implement rendering logic
+  },
+  reduceWhenUnfocused: true,
+  pauseWhenHidden: true,
+  unfocusedInterval: 1000 / 30, // 30 FPS
+};
+
+// ===== End File: src\loops\rendering.ts =====
+
+// ===== Start File: src\loops\simulation.ts =====
+/**
+ * Path: src\loops\simulation.ts
+ * Size: 340 bytes
+ * Last Modified: 2025-04-17T00:00:53.053Z
+ */
+
+import { LoopConfig } from '@/core';
+
+/**
+ * Simulation loop responsible for core game logic,
+ * such as AI, state updates, and world progression.
+ */
+export const simulationLoop: LoopConfig = {
+  name: 'simulation',
+  interval: 16, // ~60 updates per second
+  callback: () => {
+    // TODO: Implement simulation logic
+  },
+};
+
+// ===== End File: src\loops\simulation.ts =====
+
+// ===== Start File: src\metrics\index.ts =====
+/**
+ * Path: src\metrics\index.ts
+ * Size: 32 bytes
+ * Last Modified: 2025-04-15T15:17:10.445Z
+ */
+
+export * from './loopMetrics';
+
+// ===== End File: src\metrics\index.ts =====
+
+// ===== Start File: src\metrics\loopMetrics.ts =====
+/**
+ * Path: src\metrics\loopMetrics.ts
+ * Size: 2666 bytes
+ * Last Modified: 2025-04-15T18:04:02.868Z
+ */
+
+/**
+ * Interface representing the metrics collected for a loop.
+ */
+export interface LoopMetrics {
+  averageFrameTime: number;
+  averageFPS: number;
+  droppedFrames: number;
+  frameCount: number;
+  totalTime: number;
+}
+
+/**
+ * Factory function to create a LoopMetrics object.
+ * This function tracks performance metrics such as average frame time,
+ * frames per second (FPS), dropped frames, and total execution time.
+ *
+ * @param maxSamples - The maximum number of frame times to retain for averaging.
+ * @returns An object containing methods to record frames and retrieve metrics.
+ */
+export function createLoopMetrics(maxSamples: number = 100) {
+  const frameTimes: number[] = [];
+  let lastTimestamp = 0;
+  let droppedFrames = 0;
+  let frameCount = 0;
+  let totalTime = 0;
+
+  /**
+   * Records a new frame timestamp and updates metrics accordingly.
+   *
+   * @param timestamp - The current timestamp in milliseconds.
+   */
+  function recordFrame(timestamp: number) {
+    frameCount++; // Always increment on record
+
+    if (lastTimestamp) {
+      const delta = timestamp - lastTimestamp;
+
+      const avgBefore = getAverageFrameTime(); // Compute BEFORE adding new delta
+
+      frameTimes.push(delta);
+      totalTime += delta;
+
+      if (frameTimes.length > maxSamples) {
+        frameTimes.shift();
+      }
+
+      if (avgBefore > 0 && delta > 2 * avgBefore) {
+        droppedFrames++;
+      }
+    }
+
+    lastTimestamp = timestamp;
+  }
+
+  /**
+   * Calculates the average frame time based on recorded frame times.
+   *
+   * @returns The average frame time in milliseconds.
+   */
+  function getAverageFrameTime(): number {
+    if (frameTimes.length === 0) return 0;
+    const sum = frameTimes.reduce((a, b) => a + b, 0);
+    return sum / frameTimes.length;
+  }
+
+  /**
+   * Calculates the average frames per second (FPS).
+   *
+   * @returns The average FPS.
+   */
+  function getAverageFPS(): number {
+    const avgTime = getAverageFrameTime();
+    return avgTime ? 1000 / avgTime : 0;
+  }
+
+  /**
+   * Retrieves the current metrics.
+   *
+   * @returns An object containing the loop metrics.
+   */
+  function getMetrics(): LoopMetrics {
+    return {
+      averageFrameTime: getAverageFrameTime(),
+      averageFPS: getAverageFPS(),
+      droppedFrames,
+      frameCount,
+      totalTime,
+    };
+  }
+
+  /**
+   * Resets all metrics to their initial state.
+   */
+  function reset() {
+    frameTimes.length = 0;
+    droppedFrames = 0;
+    frameCount = 0;
+    totalTime = 0;
+    lastTimestamp = 0;
+  }
+
+  return {
+    recordFrame,
+    getMetrics,
+    reset,
+  };
+}
+
+// ===== End File: src\metrics\loopMetrics.ts =====
+
+// ===== Start File: src\workers\index.ts =====
+/**
+ * Path: src\workers\index.ts
+ * Size: 26 bytes
+ * Last Modified: 2025-04-16T01:44:22.938Z
+ */
+
+export * from './types';
+
+// ===== End File: src\workers\index.ts =====
+
+// ===== Start File: src\workers\types.ts =====
+/**
+ * Path: src\workers\types.ts
+ * Size: 354 bytes
+ * Last Modified: 2025-04-16T01:44:16.285Z
+ */
+
+/**
+ * Message types exchanged between the main thread and the worker.
+ */
+
+/** Outgoing messages (from worker to main) */
+export type WorkerToMainMessage = {
+  type: 'tick';
+  timestamp: number;
+};
+
+/** Incoming messages (from main to worker) */
+export type MainToWorkerMessage = {
+  type: 'setHz';
+  payload: {
+    hz: number;
+  };
+};
+
+// ===== End File: src\workers\types.ts =====
+
+// ===== Start File: src\workers\worker.ts =====
+/**
+ * Path: src\workers\worker.ts
+ * Size: 1034 bytes
+ * Last Modified: 2025-04-16T01:44:14.455Z
+ */
+
+import type { MainToWorkerMessage, WorkerToMainMessage } from './types';
+
+let hz = 60;
+let interval = 1000 / hz;
+const MAX_HZ = 500;
+
+let timerId: ReturnType<typeof setInterval> | null = null;
+
+function startTicking() {
+  if (timerId !== null) return;
+
+  timerId = setInterval(() => {
+    const message: WorkerToMainMessage = {
+      type: 'tick',
+      timestamp: performance.now(),
+    };
+    self.postMessage(message);
+  }, interval);
+}
+
+function restartTicking() {
+  if (timerId !== null) clearInterval(timerId);
+  interval = 1000 / hz;
+  timerId = setInterval(() => {
+    const message: WorkerToMainMessage = {
+      type: 'tick',
+      timestamp: performance.now(),
+    };
+    self.postMessage(message);
+  }, interval);
+}
+
+self.onmessage = (event: MessageEvent<MainToWorkerMessage>) => {
+  const { type, payload } = event.data;
+
+  if (type === 'setHz') {
+    const newHz = Math.min(Math.max(1, payload?.hz ?? 60), MAX_HZ);
+    hz = newHz;
+    restartTicking();
+  }
+};
+
+startTicking();
+
+// ===== End File: src\workers\worker.ts =====
+
+// ===== Start File: tests\createEngine.test.ts =====
+/**
+ * Path: tests\createEngine.test.ts
+ * Size: 1497 bytes
+ * Last Modified: 2025-04-17T00:12:29.244Z
+ */
+
+import { describe, it, expect, vi } from 'vitest';
+import { createEngine } from '@/core/createEngine';
+
+describe('createEngine – integration with Worker and LoopManager', () => {
+  const dummyLoop = {
+    name: 'dummy',
+    interval: 10,
+    callback: vi.fn(),
+  };
+
+  it('start() sends the correct setHz message to the worker', () => {
+    const { start, worker } = createEngine({ loops: [dummyLoop] });
+
+    start();
+
+    expect(worker.postMessage).toHaveBeenCalledWith({
+      type: 'setHz',
+      payload: { hz: 60 },
+    });
+  });
+
+  it('stop() terminates the worker', () => {
+    const { stop, worker } = createEngine({ loops: [dummyLoop] });
+
+    stop();
+
+    expect(worker.terminate).toHaveBeenCalledTimes(1);
+  });
+
+  it('a tick message from the worker triggers loopManager.startAll()', () => {
+    const engine = createEngine({ loops: [dummyLoop] });
+    const spy = vi.spyOn(engine.loopManager, 'startAll');
+
+    // Simulate an incoming tick from the worker
+    engine.worker.onmessage?.({
+      data: { type: 'tick' },
+    } as MessageEvent);
+
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it('non‑tick messages are ignored by the onmessage handler', () => {
+    const engine = createEngine({ loops: [dummyLoop] });
+    const spy = vi.spyOn(engine.loopManager, 'startAll');
+
+    engine.worker.onmessage?.({
+      data: { type: 'something‑else' },
+    } as MessageEvent);
+
+    expect(spy).not.toHaveBeenCalled();
+  });
+});
+
+// ===== End File: tests\createEngine.test.ts =====
+
+// ===== Start File: tests\loopFactory.test.ts =====
+/**
+ * Path: tests\loopFactory.test.ts
+ * Size: 7932 bytes
+ * Last Modified: 2025-04-16T23:21:38.936Z
+ */
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { createLoop } from '@/core/loopFactory';
+
+/**
+ * This test suite exercises **all** branches in `createLoop`:
+ * 1. normal start/stop
+ * 2. listeners added / not added
+ * 3. pause-on-hidden true & false paths
+ * 4. reduce‑when‑unfocused true & false, focused & unfocused
+ * 5. duplicate‑start guard (`if (!running)` false branch)
+ * 6. default `unfocusedInterval` parameter
+ * 7. environment with missing `window`/`document`
+ * 8. branch where `pauseWhenHidden` true but `hidden` is false
+ */
+
+describe('createLoop', () => {
+  let origHidden: PropertyDescriptor | undefined;
+  let origHasFocus: (() => boolean) | undefined;
+
+  beforeEach(() => {
+    origHidden = Object.getOwnPropertyDescriptor(document, 'hidden');
+    origHasFocus = document.hasFocus;
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    if (origHidden) {
+      Object.defineProperty(document, 'hidden', origHidden);
+    } else {
+      delete (document as any).hidden;
+    }
+    document.hasFocus = origHasFocus!;
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('starts and stops correctly', () => {
+    const cb = vi.fn();
+    const loop = createLoop({
+      name: 'base',
+      interval: 60,
+      callback: cb,
+      reduceWhenUnfocused: false,
+      pauseWhenHidden: false,
+    });
+    const setInt = vi.spyOn(window, 'setInterval');
+    const clrInt = vi.spyOn(window, 'clearInterval');
+
+    loop.start();
+    expect(loop.isRunning()).toBe(true);
+    expect(setInt).toHaveBeenCalledWith(cb, 60);
+
+    loop.stop();
+    expect(loop.isRunning()).toBe(false);
+    expect(clrInt).toHaveBeenCalled();
+  });
+
+  it('does not schedule a second timer if start() called while running', () => {
+    const cb = vi.fn();
+    const loop = createLoop({
+      name: 'dup',
+      interval: 40,
+      callback: cb,
+      reduceWhenUnfocused: false,
+      pauseWhenHidden: false,
+    });
+    const spy = vi.spyOn(window, 'setInterval');
+    loop.start();
+    const first = spy.mock.calls.length;
+    loop.start();
+    expect(spy.mock.calls.length).toBe(first); // no new timer
+  });
+
+  it('adds listeners when either flag true and skips otherwise', () => {
+    const docSpy = vi.spyOn(document, 'addEventListener');
+    const winSpy = vi.spyOn(window, 'addEventListener');
+
+    createLoop({
+      name: 'no-listeners',
+      interval: 50,
+      callback: () => {},
+      reduceWhenUnfocused: false,
+      pauseWhenHidden: false,
+    });
+    expect(docSpy).not.toHaveBeenCalled();
+
+    createLoop({
+      name: 'listeners',
+      interval: 50,
+      callback: () => {},
+      reduceWhenUnfocused: true,
+      pauseWhenHidden: true,
+    });
+    expect(docSpy).toHaveBeenCalledWith(
+      'visibilitychange',
+      expect.any(Function),
+    );
+    expect(winSpy).toHaveBeenCalledWith('blur', expect.any(Function));
+  });
+
+  it('pauses when hidden (pauseWhenHidden true & hidden true)', () => {
+    const cb = vi.fn();
+    const loop = createLoop({
+      name: 'hidden',
+      interval: 70,
+      callback: cb,
+      reduceWhenUnfocused: false,
+      pauseWhenHidden: true,
+    });
+    loop.start();
+    Object.defineProperty(document, 'hidden', {
+      configurable: true,
+      get: () => true,
+    });
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(loop.isRunning()).toBe(false);
+  });
+
+  it('restarts at reduced interval when unfocused', () => {
+    const cb = vi.fn();
+    const loop = createLoop({
+      name: 'unfocused',
+      interval: 100,
+      callback: cb,
+      reduceWhenUnfocused: true,
+      pauseWhenHidden: false,
+      unfocusedInterval: 250,
+    });
+    const setInt = vi.spyOn(window, 'setInterval');
+    document.hasFocus = () => false;
+
+    loop.start();
+    window.dispatchEvent(new Event('blur'));
+    vi.advanceTimersByTime(1);
+
+    const [, delay] = setInt.mock.calls.pop()!;
+    expect(delay).toBe(250);
+  });
+
+  it('keeps running (and restarts) when pauseWhenHidden true but document is visible', () => {
+    const cb = vi.fn();
+    const loop = createLoop({
+      name: 'visible',
+      interval: 80,
+      callback: cb,
+      reduceWhenUnfocused: false,
+      pauseWhenHidden: true,
+    });
+
+    const setInt = vi.spyOn(window, 'setInterval');
+    loop.start();
+    const before = setInt.mock.calls.length;
+    // document.hidden defaults to false -> visible
+    document.dispatchEvent(new Event('visibilitychange'));
+    vi.advanceTimersByTime(1);
+    const after = setInt.mock.calls.length;
+    // restart should add another setInterval call
+    expect(after).toBeGreaterThan(before);
+    expect(loop.isRunning()).toBe(true);
+  });
+
+  it('uses default unfocusedInterval (1000/30) when not specified', () => {
+    const cb = vi.fn();
+    const loop = createLoop({
+      name: 'default-fps',
+      interval: 120,
+      callback: cb,
+      reduceWhenUnfocused: true,
+      pauseWhenHidden: false,
+    });
+    const setInt = vi.spyOn(window, 'setInterval');
+    document.hasFocus = () => false;
+    loop.start();
+    window.dispatchEvent(new Event('blur'));
+    vi.advanceTimersByTime(1);
+    const [, delay] = setInt.mock.calls.pop()!;
+    expect(delay).toBeCloseTo(1000 / 30);
+  });
+
+  it('keeps base interval when focused even if reduceWhenUnfocused is true', () => {
+    const cb = vi.fn();
+    const loop = createLoop({
+      name: 'focused',
+      interval: 150,
+      callback: cb,
+      reduceWhenUnfocused: true,
+      pauseWhenHidden: false,
+      unfocusedInterval: 500,
+    });
+    const setInt = vi.spyOn(window, 'setInterval');
+
+    document.hasFocus = () => true;
+    loop.start();
+    window.dispatchEvent(new Event('blur'));
+    vi.advanceTimersByTime(1);
+    const [, delay] = setInt.mock.calls.pop()!;
+    expect(delay).toBe(150);
+  });
+
+  it('updateInterval does nothing harmful when loop not running', () => {
+    const cb = vi.fn();
+    const loop = createLoop({
+      name: 'not-running',
+      interval: 90,
+      callback: cb,
+      reduceWhenUnfocused: true,
+      pauseWhenHidden: false,
+      unfocusedInterval: 333,
+    });
+    document.hasFocus = () => false;
+    window.dispatchEvent(new Event('blur'));
+    expect(loop.isRunning()).toBe(false);
+  });
+
+  it('gracefully handles absence of window/document', () => {
+    const origWin = global.window;
+    const origDoc = global.document;
+    try {
+      (global as any).window = undefined;
+      (global as any).document = undefined;
+
+      expect(() =>
+        createLoop({
+          name: 'no-env',
+          interval: 100,
+          callback: () => {},
+          reduceWhenUnfocused: true,
+          pauseWhenHidden: true,
+        }),
+      ).not.toThrow();
+    } finally {
+      global.window = origWin;
+      global.document = origDoc;
+    }
+  });
+
+  /**
+   * Covers branch where `document?.hidden` evaluates to **undefined** (nullish)
+   * so the `?? false` default is used.  This is the only branch (line 19)
+   * still un‑hit in coverage.
+   */
+  it('treats undefined document.hidden as not hidden', () => {
+    const cb = vi.fn();
+    const loop = createLoop({
+      name: 'undef-hidden',
+      interval: 110,
+      callback: cb,
+      reduceWhenUnfocused: false,
+      pauseWhenHidden: true, // flag true so path executes
+    });
+
+    // Override document.hidden getter to return undefined
+    Object.defineProperty(document, 'hidden', {
+      configurable: true,
+      get: () => undefined,
+    });
+
+    loop.start();
+    // Dispatch visibilitychange to invoke updateInterval; because hidden === undefined,
+    // pauseWhenHidden should *not* stop the loop.
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(loop.isRunning()).toBe(true);
+  });
+});
+
+// ===== End File: tests\loopFactory.test.ts =====
+
+// ===== Start File: tests\loopManager.test.ts =====
+/**
+ * Path: tests\loopManager.test.ts
+ * Size: 4972 bytes
+ * Last Modified: 2025-04-16T23:03:11.904Z
+ */
+
+import { createLoopManager } from '@/core';
+import { describe, expect, it, vi } from 'vitest';
+
+describe('Loop Manager', () => {
+  it('should register and manage loops correctly', () => {
+    const manager = createLoopManager();
+    const loopConfig = {
+      name: 'testLoop',
+      interval: 100,
+      callback: vi.fn(),
+    };
+
+    manager.registerLoop(loopConfig);
+    expect(manager.isRunning({ name: 'testLoop' })).toBe(false);
+
+    manager.startLoop({ name: 'testLoop' });
+    expect(manager.isRunning({ name: 'testLoop' })).toBe(true);
+
+    manager.stopLoop({ name: 'testLoop' });
+    expect(manager.isRunning({ name: 'testLoop' })).toBe(false);
+  });
+
+  it('should warn when registering a duplicate loop', () => {
+    const manager = createLoopManager();
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const loopConfig = {
+      name: 'duplicateLoop',
+      interval: 100,
+      callback: vi.fn(),
+    };
+
+    manager.registerLoop(loopConfig);
+    manager.registerLoop(loopConfig); // duplicate
+    expect(spy).toHaveBeenCalledWith(
+      'Loop with name "duplicateLoop" is already registered.',
+    );
+
+    spy.mockRestore();
+  });
+
+  it('should warn when starting or stopping an unknown loop', () => {
+    const manager = createLoopManager();
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    manager.startLoop({ name: 'ghostLoop' });
+    expect(spy).toHaveBeenCalledWith('Loop "ghostLoop" not found.');
+
+    manager.stopLoop({ name: 'ghostLoop' });
+    expect(spy).toHaveBeenCalledWith('Loop "ghostLoop" not found.');
+
+    spy.mockRestore();
+  });
+
+  it('should start and stop all loops correctly', () => {
+    const manager = createLoopManager();
+    const startSpy = vi.fn();
+    const stopSpy = vi.fn();
+
+    manager.registerLoop({
+      name: 'loopOne',
+      interval: 10,
+      callback: () => {},
+    });
+
+    manager.registerLoop({
+      name: 'loopTwo',
+      interval: 10,
+      callback: () => {},
+    });
+
+    // Manually patch start/stop for spying
+    const loopOne = manager.getLoop({ name: 'loopOne' })!;
+    const loopTwo = manager.getLoop({ name: 'loopTwo' })!;
+    (loopOne as any).start = startSpy;
+    (loopTwo as any).start = startSpy;
+    (loopOne as any).stop = stopSpy;
+    (loopTwo as any).stop = stopSpy;
+
+    manager.startAll();
+    expect(startSpy).toHaveBeenCalledTimes(2);
+
+    manager.stopAll();
+    expect(stopSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('should return undefined for non-existent loop', () => {
+    const manager = createLoopManager();
+    const loop = manager.getLoop({ name: 'unknownLoop' });
+    expect(loop).toBeUndefined();
+  });
+
+  it('should return true for a running loop', () => {
+    const manager = createLoopManager();
+    const loopConfig = {
+      name: 'runningLoop',
+      interval: 100,
+      callback: vi.fn(),
+    };
+
+    manager.registerLoop(loopConfig);
+    manager.startLoop({ name: 'runningLoop' });
+
+    expect(manager.isRunning({ name: 'runningLoop' })).toBe(true);
+  });
+
+  it('should return false for a stopped loop', () => {
+    const manager = createLoopManager();
+    const loopConfig = {
+      name: 'stoppedLoop',
+      interval: 100,
+      callback: vi.fn(),
+    };
+
+    manager.registerLoop(loopConfig);
+    // Not starting the loop
+
+    expect(manager.isRunning({ name: 'stoppedLoop' })).toBe(false);
+  });
+
+  it('should return false for a non-existent loop', () => {
+    const manager = createLoopManager();
+
+    expect(manager.isRunning({ name: 'nonExistentLoop' })).toBe(false);
+  });
+
+  it('should start all stopped loops when tickAll is called', () => {
+    const manager = createLoopManager();
+    const callback = vi.fn();
+
+    manager.registerLoop({
+      name: 'loopA',
+      interval: 100,
+      callback,
+    });
+
+    manager.registerLoop({
+      name: 'loopB',
+      interval: 100,
+      callback,
+    });
+
+    // Ensure both loops are initially stopped
+    expect(manager.isRunning({ name: 'loopA' })).toBe(false);
+    expect(manager.isRunning({ name: 'loopB' })).toBe(false);
+
+    manager.tickAll();
+
+    // After tickAll, both loops should be running
+    expect(manager.isRunning({ name: 'loopA' })).toBe(true);
+    expect(manager.isRunning({ name: 'loopB' })).toBe(true);
+  });
+
+  it('should keep already running loops running when tickAll is called', () => {
+    const manager = createLoopManager();
+    const callback = vi.fn();
+
+    manager.registerLoop({
+      name: 'loopC',
+      interval: 100,
+      callback,
+    });
+
+    // Start loopC
+    manager.startLoop({ name: 'loopC' });
+
+    // Ensure loopC is running
+    expect(manager.isRunning({ name: 'loopC' })).toBe(true);
+
+    manager.tickAll();
+
+    // After tickAll, loopC should still be running
+    expect(manager.isRunning({ name: 'loopC' })).toBe(true);
+  });
+});
+
+// ===== End File: tests\loopManager.test.ts =====
+
+// ===== Start File: tests\loopMetrics.test.ts =====
+/**
+ * Path: tests\loopMetrics.test.ts
+ * Size: 2125 bytes
+ * Last Modified: 2025-04-15T18:05:35.583Z
+ */
+
+import { describe, it, expect } from 'vitest';
+import { createLoopMetrics } from '@/metrics/loopMetrics';
+
+describe('LoopMetrics', () => {
+  it('should record frames and calculate average frame time and FPS', () => {
+    const metrics = createLoopMetrics();
+    metrics.recordFrame(1000); // 1st call, no delta
+    metrics.recordFrame(1016); // delta = 16
+    metrics.recordFrame(1032); // delta = 16
+
+    const result = metrics.getMetrics();
+
+    expect(result.frameCount).toBe(3); // All calls counted
+    expect(result.totalTime).toBe(32); // 16 + 16
+    expect(result.averageFrameTime).toBeCloseTo(16, 1);
+    expect(result.averageFPS).toBeCloseTo(62.5, 1);
+  });
+
+  it('should drop frames if delta is more than 2x average', () => {
+    const metrics = createLoopMetrics();
+    metrics.recordFrame(1000); // first
+    metrics.recordFrame(1016); // +16
+    metrics.recordFrame(1032); // +16
+    metrics.recordFrame(1100); // +68 (drop)
+
+    const result = metrics.getMetrics();
+
+    expect(result.frameCount).toBe(4);
+    expect(result.droppedFrames).toBe(1); // 68 > 2 * avg(16)
+  });
+
+  it('should cap frame samples by maxSamples', () => {
+    const metrics = createLoopMetrics(5); // max 5 frameTimes
+    metrics.recordFrame(1000); // 0
+    metrics.recordFrame(1010); // +10
+    metrics.recordFrame(1020); // +10
+    metrics.recordFrame(1030); // +10
+    metrics.recordFrame(1040); // +10
+    metrics.recordFrame(1050); // +10
+    metrics.recordFrame(1060); // +10
+
+    const result = metrics.getMetrics();
+    expect(result.frameCount).toBe(7); // 7 record calls
+    expect(result.averageFrameTime).toBe(10); // last 5 used
+  });
+
+  it('should reset all internal state', () => {
+    const metrics = createLoopMetrics();
+    metrics.recordFrame(1000);
+    metrics.recordFrame(1016);
+    metrics.reset();
+
+    const result = metrics.getMetrics();
+    expect(result.frameCount).toBe(0);
+    expect(result.droppedFrames).toBe(0);
+    expect(result.totalTime).toBe(0);
+    expect(result.averageFrameTime).toBe(0);
+    expect(result.averageFPS).toBe(0);
+  });
+});
+
+// ===== End File: tests\loopMetrics.test.ts =====
+
+// ===== Start File: tests\setup.ts =====
+/**
+ * Path: tests\setup.ts
+ * Size: 626 bytes
+ * Last Modified: 2025-04-15T17:34:38.943Z
+ */
+
+import { afterAll, beforeAll, vi } from 'vitest';
+
+// Stub for requestAnimationFrame and cancelAnimationFrame
+beforeAll(() => {
+  vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) =>
+    setTimeout(() => cb(performance.now()), 16),
+  );
+  vi.stubGlobal('cancelAnimationFrame', (id: number) => clearTimeout(id));
+
+  // Stub for Worker API
+  vi.stubGlobal(
+    'Worker',
+    class {
+      postMessage = vi.fn();
+      terminate = vi.fn();
+      onmessage: ((event: MessageEvent) => void) | null = null;
+    },
+  );
+});
+
+// Clean up all stubs
+afterAll(() => {
+  vi.unstubAllGlobals();
+});
+
+// ===== End File: tests\setup.ts =====
+
+// ===== Start File: tsconfig.json =====
+/**
+ * Path: tsconfig.json
+ * Size: 487 bytes
+ * Last Modified: 2025-04-16T03:09:25.824Z
+ */
+
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "target": "ESNext",
+    "module": "ESNext",
+    "lib": ["DOM", "ESNext", "WebWorker"],
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noPropertyAccessFromIndexSignature": false
+  },
+  "include": ["src", "tests"]
+}
+
+// ===== End File: tsconfig.json =====
+
+// ===== Start File: vite.config.ts =====
+/**
+ * Path: vite.config.ts
+ * Size: 1149 bytes
+ * Last Modified: 2025-04-17T00:06:43.021Z
+ */
+
+import { defineConfig } from 'vitest/config';
+import dts from 'vite-plugin-dts';
+import path from 'path';
+
+export default defineConfig({
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, 'src'),
+    },
+  },
+  build: {
+    lib: {
+      entry: path.resolve(__dirname, 'src/index.ts'),
+      name: 'BitshimEngine',
+      fileName: 'bitshim-engine',
+      formats: ['es'],
+    },
+  },
+
+  plugins: [
+    // dts({ entryRoot: 'src', rollupTypes: true, tsconfigPath: 'tsconfig.json' }),
+  ],
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./tests/setup.ts', '@vitest/web-worker'],
+    globals: true,
+    include: ['tests/**/*.test.ts'],
+    exclude: [
+      'dist',
+      'src/workers/**',
+      'src/loops/**',
+      '**/*[cC]onfig.ts',
+      '**/*types.ts',
+      '**/index.ts',
+      'scripts',
+    ],
+    coverage: {
+      provider: 'istanbul',
+      reporter: ['text', 'lcov'],
+      exclude: [
+        'dist/**',
+        'src/workers/**',
+        'src/loops/**',
+        '**/*[cC]onfig.ts',
+        '**/*types.ts',
+        '**/index.ts',
+        'scripts',
+      ],
+    },
+  },
+});
+
+// ===== End File: vite.config.ts =====
+
