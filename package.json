@@ -1,6 +1,6 @@
 {
   "name": "@bitshim/engine",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Lightweight, high-performance game engine core with Web Worker–based ticking and loop management.",
   "keywords": [
     "game engine",
