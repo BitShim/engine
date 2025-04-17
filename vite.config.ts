@@ -18,7 +18,11 @@ export default defineConfig({
   },
 
   plugins: [
-    // dts({ entryRoot: 'src', rollupTypes: true, tsconfigPath: 'tsconfig.json' }),
+    dts({
+      rollupTypes: true,
+      outDir: 'dist/types',
+      insertTypesEntry: true, // This will generate the correct "index.d.ts"
+    }),
   ],
   test: {
     environment: 'jsdom',

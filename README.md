@@ -12,7 +12,6 @@ A lightweight, high-performance core for browser-based game engines, providing W
 - 🚀 **High-performance**: Web Worker–driven simulation tick loop
 - 🧠 **Smart focus handling**: Automatically throttles or pauses when hidden/unfocused
 - ⟳ **Multiple loops**: Easily manage physics, simulation, rendering, etc.
-- 📊 **Built-in metrics**: Track FPS, frame time, dropped frames
 
 ---
 
