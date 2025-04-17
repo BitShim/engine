@@ -29,7 +29,7 @@
     }
   },
   "scripts": {
-    "test": "bunx vitest",
+    "test": "bunx vitest run",
     "coverage": "vitest run --coverage",
     "dev": "bunx --bun vite",
     "build": "bunx --bun vite build",
