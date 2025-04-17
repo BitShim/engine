@@ -28,6 +28,9 @@
       "types": "./dist/types/index.d.ts"
     }
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "test": "bunx vitest run",
     "coverage": "vitest run --coverage",
