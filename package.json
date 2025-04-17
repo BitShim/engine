@@ -1,6 +1,16 @@
 {
   "name": "@bitshim/engine",
   "version": "0.1.0",
+  "license": "MIT",
+  "author": "Bit Shim <remimyrset@gmail.com> (https://github.com/BitShim)",
+  "homepage": "https://github.com/BitShim",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BitShim/engine.git"
+  },
+  "bugs": {
+    "url": "https://github.com/BitShim/engine/issues"
+  },
   "type": "module",
   "types": "./dist/types/index.d.ts",
   "exports": {
