@@ -11,17 +11,22 @@ export default defineConfig({
   build: {
     lib: {
       entry: path.resolve(__dirname, 'src/index.ts'),
-      name: 'BitshimEngine',
-      fileName: 'bitshim-engine',
+      name: 'index',
+      fileName: 'index',
       formats: ['es'],
+    },
+    rollupOptions: {
+      output: {
+        entryFileNames: '[name].js',
+      },
     },
   },
 
   plugins: [
     dts({
       rollupTypes: true,
-      outDir: 'dist/types',
-      insertTypesEntry: true, // This will generate the correct "index.d.ts"
+      outDir: 'dist',
+      insertTypesEntry: true,
     }),
   ],
   test: {
