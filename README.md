@@ -1,6 +1,7 @@
 # @bitshim/engine
 
 [![npm version](https://img.shields.io/npm/v/@bitshim/engine.svg)](https://www.npmjs.com/package/@bitshim/engine)
+[![codecov](https://codecov.io/gh/BitShim/engine/branch/main/graph/badge.svg)](https://codecov.io/gh/BitShim/engine)
 
 A lightweight, high-performance core for browser-based game engines, providing Web Worker–based ticking and flexible loop management.
 

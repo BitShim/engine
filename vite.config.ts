@@ -35,7 +35,7 @@ export default defineConfig({
       'scripts',
     ],
     coverage: {
-      provider: 'istanbul',
+      // provider: 'istanbul',
       reporter: ['text', 'lcov'],
       exclude: [
         'dist/**',
