@@ -1,6 +1,6 @@
 import { LoopConfig } from './types';
 import { createLoopManager } from './loopManager';
-import EngineWorker from '@/workers/worker?worker';
+import EngineWorker from '@/workers/worker?worker&inline';
 
 /**
  * Creates and initializes the core game engine.
