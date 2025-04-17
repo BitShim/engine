@@ -1,3 +1,10 @@
+## [1.0.3](https://github.com/BitShim/engine/compare/v1.0.2...v1.0.3) (2025-04-17)
+
+
+### Bug Fixes
+
+* correct package.json exports to resolve Vite import-analysis error ([cc16d12](https://github.com/BitShim/engine/commit/cc16d123de8aabc731c26ec8dbf5459fac64386e))
+
 ## [1.0.2](https://github.com/BitShim/engine/compare/v1.0.1...v1.0.2) (2025-04-17)
 
 
