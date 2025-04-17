@@ -3,34 +3,71 @@ import { createLoopManager } from './loopManager';
 
 /**
  * Creates and initializes the core game engine.
+ *
+ * @param loops - An array of loop configurations to register:
+ *   • simulation loop: core game logic (~60 fps)
+ *   • physics loop: fixed-rate physics updates (e.g., 50 ms interval)
+ *   • rendering loop: visual updates at full rate when focused, throttled when unfocused, paused when hidden
+ *
+ * @returns An engine handle with:
+ *   - start(): begin the worker at 60 Hz
+ *   - stop(): terminate the worker
+ *   - worker: underlying Web Worker instance
+ *   - loopManager: manager for controlling registered loops
+ *
+ * @example
+ * ```ts
+ * import { createEngine, LoopConfig } from '@bitshim/engine';
+ *
+ * // Define your loops
+ * function handleSimulationTick() {
+ *   console.log('Running simulation step');
+ * }
+ *
+ * function handlePhysicsTick() {
+ *   console.log('Executing physics update');
+ * }
+ *
+ * function handleRenderTick() {
+ *   console.log('Rendering scene frame');
+ * }
+ *
+ * // Instantiate the engine with inline loop configs
+ * const engine = createEngine({
+ *   loops: [
+ *     {
+ *       name: 'simulation',
+ *       interval: 16,
+ *       callback: handleSimulationTick
+ *     },
+ *     {
+ *       name: 'physics',
+ *       interval: 50,
+ *       callback: handlePhysicsTick
+ *     },
+ *     {
+ *       name: 'rendering',
+ *       interval: 16,
+ *       callback: handleRenderTick,
+ *       reduceWhenUnfocused: true,
+ *       pauseWhenHidden: true,
+ *       unfocusedInterval: 1000 / 30, // ~30 fps when unfocused
+ *     },
+ *   ],
+ * });
+ * ```
  */
 export function createEngine({
   loops,
+  hz = 60,
+  autoStart = true,
 }: {
-  /**
-   * An array of loop configurations that define the loops to run in the engine.
-   * Each loop configuration must contain:
-   * - `name`: A unique identifier for the loop (e.g., 'simulation', 'physics', 'rendering').
-   * - `interval`: The time interval (in milliseconds) at which the loop will run.
-   * - `callback`: The function that will be executed each time the loop runs.
-   *
-   * This is a **required** parameter. The engine will not function without passing an array of loops.
-   * The loops provided will be registered and executed at the specified intervals.
-   *
-   * Example:
-   * ```ts
-   * const customLoop = {
-   *   name: 'customLoop',
-   *   interval: 30, // Custom interval in milliseconds
-   *   callback: () => console.log('Custom loop running'),
-   * };
-   *
-   * const engine = createEngine({
-   *   loops: [customLoop],
-   * });
-   * ```
-   */
+  /** Array of loop configurations (name, interval in ms, and callback) to register */
   loops: LoopConfig[];
+  /** Desired worker tick rate in Hz (default: 60) */
+  hz?: number;
+  /** Auto-start on creation (default: true) */
+  autoStart?: boolean;
 }) {
   if (!loops || loops.length === 0) {
     throw new Error('loops is required');
@@ -42,7 +79,6 @@ export function createEngine({
 
   const loopManager = createLoopManager();
 
-  // Register the loops
   for (const loop of loops) {
     loopManager.registerLoop(loop);
   }
@@ -53,10 +89,15 @@ export function createEngine({
     }
   };
 
-  return {
-    start: () => worker.postMessage({ type: 'setHz', payload: { hz: 60 } }),
+  const api = {
+    start: () => worker.postMessage({ type: 'setHz', payload: { hz } }),
     stop: () => worker.terminate(),
     worker,
     loopManager,
   };
+
+  // Optionally start immediately
+  if (autoStart) api.start();
+
+  return api;
 }

@@ -87,4 +87,30 @@ describe('createEngine – integration with Worker and LoopManager', () => {
     // Force‑cast so TypeScript lets us pass an object with no loops key
     expect(() => (createEngine as any)({})).toThrow('loops is required');
   });
+
+  it('auto‑starts the worker by default', () => {
+    const dummyLoop = { name: 'dummy', interval: 10, callback: vi.fn() };
+    const engine = createEngine({ loops: [dummyLoop] });
+
+    // default autoStart===true should have already sent the first setHz
+    expect(engine.worker.postMessage).toHaveBeenCalledWith({
+      type: 'setHz',
+      payload: { hz: 60 },
+    });
+  });
+
+  it('does not auto‑start when autoStart is false', () => {
+    const dummyLoop = { name: 'dummy', interval: 10, callback: vi.fn() };
+    const engine = createEngine({ loops: [dummyLoop], autoStart: false });
+
+    // no calls on creation
+    expect(engine.worker.postMessage).not.toHaveBeenCalled();
+
+    // but start() still works manually
+    engine.start();
+    expect(engine.worker.postMessage).toHaveBeenCalledWith({
+      type: 'setHz',
+      payload: { hz: 60 },
+    });
+  });
 });
