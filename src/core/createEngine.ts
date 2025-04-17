@@ -1,5 +1,6 @@
 import { LoopConfig } from './types';
 import { createLoopManager } from './loopManager';
+import EngineWorker from '@/workers/worker?worker';
 
 /**
  * Creates and initializes the core game engine.
@@ -73,9 +74,7 @@ export function createEngine({
     throw new Error('loops is required');
   }
 
-  const worker = new Worker(new URL('@/workers/worker.ts', import.meta.url), {
-    type: 'module',
-  });
+  const worker = new EngineWorker();
 
   const loopManager = createLoopManager();
 
