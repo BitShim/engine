@@ -4,9 +4,21 @@
 
 A lightweight, high-performance core for browser-based game engines, providing Web Worker–based ticking and flexible loop management.
 
+---
+
+## Why use this?
+
+- 🚀 **High-performance**: Web Worker–driven simulation tick loop
+- 🧠 **Smart focus handling**: Automatically throttles or pauses when hidden/unfocused
+- ⟳ **Multiple loops**: Easily manage physics, simulation, rendering, etc.
+- 📊 **Built-in metrics**: Track FPS, frame time, dropped frames
+
+---
+
 ## Table of Contents
 
 - [@bitshim/engine](#bitshimengine)
+  - [Why use this?](#why-use-this)
   - [Table of Contents](#table-of-contents)
   - [Installation](#installation)
   - [Quick Start](#quick-start)
@@ -15,9 +27,9 @@ A lightweight, high-performance core for browser-based game engines, providing W
     - [`createEngine(options)`](#createengineoptions)
   - [License](#license)
 
-## Installation
+---
 
-Install via your preferred package manager:
+## Installation
 
 ```bash
 # npm
@@ -30,12 +42,13 @@ yarn add @bitshim/engine
 bun add @bitshim/engine
 ```
 
+---
+
 ## Quick Start
 
 ```ts
 import { createEngine } from '@bitshim/engine';
 
-// Define loop callbacks
 function handleSimulationTick() {
   console.log('Running simulation step');
 }
@@ -44,49 +57,44 @@ function handleRenderTick() {
   console.log('Rendering scene frame');
 }
 
-// Initialize engine with simulation and rendering loops
 const engine = createEngine({
   loops: [
     {
       name: 'simulation',
-      interval: 1000 / 60, // ~60 fps
+      interval: 1000 / 60,
       callback: handleSimulationTick,
     },
     {
       name: 'rendering',
-      interval: 1000 / 60, // ~60 fps
+      interval: 1000 / 60,
       callback: handleRenderTick,
       reduceWhenUnfocused: true,
       pauseWhenHidden: true,
-      unfocusedInterval: 1000 / 30, // ~30 fps when unfocused
+      unfocusedInterval: 1000 / 30,
     },
   ],
 });
 ```
 
+---
+
 ## Other Loops
 
-You can add a physics loop by:
-
-1. Creating a physics callback function:
+You can add more loops for background tasks, physics, or analytics:
 
 ```ts
 function handlePhysicsTick() {
   console.log('Executing physics update');
 }
-```
 
-2. Adding an extra item to the `loops` array:
-
-```ts
-{
+engine.loopManager.registerLoop({
   name: 'physics',
   interval: 1000 / 20, // 20 FPS physics
   callback: handlePhysicsTick,
-},
+});
 ```
 
-This allows you to run lower-frequency updates for things like physics simulations or background processing.
+---
 
 ## API Reference
 
@@ -102,11 +110,14 @@ Creates and initializes the core game engine.
 
 **Returns** an object with:
 
-- `start()` – Send tick-rate update to the Worker or start it
-- `stop()` – Terminate the Worker
+- `start()` – Starts the Worker with the specified tick rate
+- `stop()` – Terminates the Worker
 - `worker` – Underlying `Worker` instance
 - `loopManager` – Manager for controlling individual loops
 
+---
+
 ## License
 
-MIT © Bit Shim
+MIT © [Bit Shim](https://github.com/BitShim) — commercial use allowed
+
